@@ -6,19 +6,15 @@ using TMPro;
 using FishNet.Object.Synchronizing;
 using FishNet.Object;
 using System;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 public class GameManager : NetworkBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    [SerializeField] private float timeToStart = 0;
-
-    private TextMeshProUGUI timer;
-    private int currentGameTime;
-    private Coroutine timerCoroutine;
-    private GameObject gameOver;
-    [SerializeField] private GameObject wonEffect;
-
+    [SerializeField] private float timeToStart = 0;  
+    [SerializeField] private TextMeshProUGUI timer;
+    [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TextMeshProUGUI timeSurvivedText;
     [SerializeField] private TextMeshProUGUI timeSurvivedScoreText;
     [SerializeField] private TextMeshProUGUI zombieKilledText;
@@ -26,8 +22,11 @@ public class GameManager : NetworkBehaviour
     [SerializeField] private TextMeshProUGUI currentScoreText;
     [SerializeField] private TextMeshProUGUI highScoreText;
 
+    private int currentGameTime;
+    private Coroutine timerCoroutine;
     private Coroutine countingCo;
     private bool started = false;
+    public bool GameStarted => started;
 
     [SyncObject]
     public readonly SyncList<PlayerInstance> players = new SyncList<PlayerInstance>();
@@ -36,17 +35,12 @@ public class GameManager : NetworkBehaviour
     {
         base.OnStartNetwork();
         Instance = this;
-        gameOver = GameObject.Find("Canvas").transform.Find("GameOver").gameObject;
-        timer = GameObject.Find("GameHUD/Timer/Time").GetComponent<TextMeshProUGUI>();
     }
 
     [Server]
     void StartGame()
     {
-        if (started) return;
-
         Debug.Log("Game Started");
-        started = true;
         foreach (PlayerInstance player in players)
         {
             player.SpawnPlayer();
@@ -54,16 +48,22 @@ public class GameManager : NetworkBehaviour
         InitializeTimer();
     }
 
+    [ObserversRpc(RunLocally = true)]
+    void CheckCountdown(int time)
+    {
+        timer.text = $"Waiting for players... {time}";
+    }
+
     private void Update()
     {
-        if (!IsServer) return;
-
         if (started == false)
         {
-            if (countingCo == null) countingCo = StartCoroutine(CountingSound());
-            timer.text = "Prepare to fight..." + (1 + (int)(timeToStart - Time.timeSinceLevelLoad));
-            if (Time.timeSinceLevelLoad >= timeToStart) StartGame();
-            return;
+            if(countingCo == null) countingCo = StartCoroutine(CountingSound());
+            if(IsServer)
+            {
+                CheckCountdown((int)(1 + timeToStart - NetworkManager.TimeManager.ServerUptime));
+                if (NetworkManager.TimeManager.ServerUptime >= timeToStart) StartGame();
+            }             
         }
     }
 
@@ -71,6 +71,7 @@ public class GameManager : NetworkBehaviour
     {
         while(!started)
         {
+            SoundManager.Instance.PlayOneShot("Countdown");
             yield return new WaitForSeconds(1f);
         }
     }
@@ -84,25 +85,20 @@ public class GameManager : NetworkBehaviour
         StartCoroutine(Wait(3f));
     }
 
-    [ObserversRpc]
+    [ObserversRpc(RunLocally = true)]
     private void InitializeTimer()
     {
+        started = true;
         currentGameTime = 0;
-        RefreshTimerUI();
-
-        StartCoroutine(Timer());
-    }
-
-    private void RefreshTimerUI()
-    {
         timer.text = TimeSpan.FromSeconds(currentGameTime).ToString(@"hh\:mm\:ss");
+        StartCoroutine(Timer());
     }
 
     private IEnumerator Wait(float time)
     {
         yield return new WaitForSeconds(time);
 
-        gameOver.SetActive(true);
+        gameOverPanel.SetActive(true);
     }
 
     private IEnumerator Timer()
@@ -110,14 +106,8 @@ public class GameManager : NetworkBehaviour
         yield return new WaitForSeconds(1f);
 
         currentGameTime += 1;
-        RefreshTimerUI();
+        timer.text = TimeSpan.FromSeconds(currentGameTime).ToString(@"hh\:mm\:ss");
         timerCoroutine = StartCoroutine(Timer());
-    }
-
-    public void TimerStatus(bool status)
-    {
-        if (status) timerCoroutine = StartCoroutine(Timer());
-        else StopCoroutine(timerCoroutine);
     }
 
     public void SetGameOverScreen(int zombieKilled)

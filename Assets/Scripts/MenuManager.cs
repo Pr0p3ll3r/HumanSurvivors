@@ -26,7 +26,7 @@ public class ProfileData
     }
 }
 
-public class MenuManager : NetworkBehaviour, IPointerEnterHandler, IPointerClickHandler
+public class MenuManager : NetworkBehaviour
 {
     public static MenuManager Instance { get; private set; }
 
@@ -42,12 +42,6 @@ public class MenuManager : NetworkBehaviour, IPointerEnterHandler, IPointerClick
     [Header("MainTab")]
     [SerializeField] private Button hostButton;
     [SerializeField] private Button joinButton;
-
-    [Header("LobbyTab")]
-    [SerializeField] private Button startButton;
-    [SerializeField] private Button readyButton;
-    [SerializeField] private Button leaveButton;
-    [SerializeField] private GameObject playerListItem;
 
     private void Awake()
     {
@@ -68,21 +62,6 @@ public class MenuManager : NetworkBehaviour, IPointerEnterHandler, IPointerClick
         {
             InstanceFinder.ClientManager.StartConnection();
         });
-
-        //readyButton.onClick.AddListener(() =>
-        //{
-        //    SetIsReady();
-        //});
-
-        //leaveButton.onClick.AddListener(() =>
-        //{
-        //    Disconnect();
-        //});
-
-        //startButton.onClick.AddListener(() =>
-        //{
-        //    GameManager.Instance.StartGameMenu();
-        //});
     }
 
     public void OpenTab(GameObject tab)
@@ -97,66 +76,13 @@ public class MenuManager : NetworkBehaviour, IPointerEnterHandler, IPointerClick
         lobbyTab.SetActive(false);
     }
 
-    public override void OnStartNetwork()
-    {
-        base.OnStartNetwork();
-
-        startButton.GetComponent<Button>().gameObject.SetActive(IsServer);
-        GetCurrentPlayerList();
-    }
-
-    private void SetIsReady()
-    {
-        if (readyButton.GetComponent<Image>().color == Color.red)
-        {
-            readyButton.GetComponent<Image>().color = Color.green;
-            PlayerInstance.Instance.ServerSetIsReady(true);
-            leaveButton.interactable = false;
-        }
-
-        else if (readyButton.GetComponent<Image>().color == Color.green)
-        {
-            readyButton.GetComponent<Image>().color = Color.red;
-            PlayerInstance.Instance.ServerSetIsReady(false);
-            leaveButton.interactable = true;
-        }
-    }
-
     private void Disconnect()
     {
         InstanceFinder.ServerManager.StopConnection(true);
     }
 
-    public void GetCurrentPlayerList()
-    {
-        Transform content = lobbyTab.transform.Find("PlayerList");
-        foreach (Transform player in content) Destroy(player.gameObject);
-
-        GameManager gameManager = GameManager.Instance;
-        foreach (PlayerInstance player in gameManager.players)
-        {
-            GameObject newPlayerItem = Instantiate(playerListItem, content) as GameObject;
-            newPlayerItem.transform.Find("Nickname").GetComponent<TextMeshProUGUI>().text = player.nickname;
-            Debug.Log(player.isReady);
-            if (player.isReady) newPlayerItem.transform.Find("Checkmark").GetComponent<Image>().color = Color.green;
-            else newPlayerItem.transform.Find("Checkmark").GetComponent<Image>().color = Color.red;
-        }
-    }
-
     public void QuitGame()
     {
         Application.Quit();
-    }
-
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        if(eventData.pointerCurrentRaycast.gameObject.GetComponentInParent<Button>() != null) 
-            SoundManager.Instance.PlayOneShot("Hover");    
-    }
-
-    public void OnPointerClick(PointerEventData eventData)
-    {
-        if (eventData.pointerCurrentRaycast.gameObject.GetComponentInParent<Button>() != null)
-            SoundManager.Instance.PlayOneShot("Click");
     }
 }

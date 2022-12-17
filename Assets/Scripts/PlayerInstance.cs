@@ -41,7 +41,7 @@ public class PlayerInstance : NetworkBehaviour
     {
         isReady = value;
         //GameManager.Instance.CheckCanStart();
-        MenuManager.Instance.GetCurrentPlayerList();
+        //MenuManager.Instance.GetCurrentPlayerList();
     }
 
     public override void OnStartClient()

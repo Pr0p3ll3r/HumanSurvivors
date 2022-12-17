@@ -44,11 +44,11 @@ public class PlayerController : NetworkBehaviour
         //player flip
         if (movement.x < 0)
         {
-            ServerSendSpriteFlip(true);
+            ServerFlipSprite(true);
         }       
         else if (movement.x > 0)
         {
-            ServerSendSpriteFlip(false);
+            ServerFlipSprite(false);
         }           
 
         //footsteps
@@ -61,19 +61,14 @@ public class PlayerController : NetworkBehaviour
         }
     }
 
-    [ServerRpc(RunLocally = true)]
-    private void ServerSendSpriteFlip(bool status)
+    [ServerRpc]
+    private void ServerFlipSprite(bool status)
     {
-        if (status)
-            spriteRenderer.flipX = true;
-        else
-            spriteRenderer.flipX = false;
-
-        SendSpriteFlipRpc(status);
+        FlipSprite(status);
     }
 
-    [ObserversRpc(IncludeOwner = false)]
-    private void SendSpriteFlipRpc(bool status)
+    [ObserversRpc]
+    private void FlipSprite(bool status)
     {
         if (status)
             spriteRenderer.flipX = true;
@@ -96,16 +91,13 @@ public class PlayerController : NetworkBehaviour
 
     private void OnCollisionExit2D(Collision2D collision)
     {
-        if(collision.gameObject.tag == "Enemy")
-        {
-            collision.rigidbody.velocity = Vector3.zero;
-            collision.otherRigidbody.velocity = Vector3.zero;
-        }   
+        collision.rigidbody.velocity = Vector3.zero;
+        collision.otherRigidbody.velocity = Vector3.zero;
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if((player.invincible) && collision.gameObject.tag == "Enemy")
+        if ((player.invincible) && collision.gameObject.tag == "Enemy")
         {
             Physics2D.IgnoreCollision(collision.collider, collision.otherCollider, true);
         }
